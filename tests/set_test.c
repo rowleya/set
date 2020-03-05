@@ -32,11 +32,16 @@ void check_string(SimpleSet *set, item key) {
 
 item make_key(int i) {
     item key;
-    key.n_dims = 1;
-    key.index = malloc(1 * sizeof(uint16_t));
-    key.index[0] = i;
+    key.n_dims = 2;
+    key.index = malloc(key.n_dims * sizeof(uint16_t));
+    key.index[0] = i % 32000;
+    key.index[1] = i / 32000;
     key.label = i;
     return key;
+}
+
+void free_key(item key) {
+    free(key.index);
 }
 
 void initialize_set(SimpleSet *set, int start, int elements, int itter, int TEST) {
@@ -44,6 +49,7 @@ void initialize_set(SimpleSet *set, int start, int elements, int itter, int TEST
     for (i = start; i < elements; i+=itter) {
         item key = make_key(i);
         int res = set_add(set, key);
+        free_key(key);
         if (res != TEST) {
             printf("Error: %d\tres: %d\n", key.label, res);
         }
@@ -56,7 +62,7 @@ int main() {
 
     unsigned int added_elements;
     int res, inaccuraces = 0;
-    uint64_t i, elements = 10000;
+    uint64_t i, elements = 50000;
     uint64_t ui;
 
     SimpleSet A, B, C;
@@ -106,13 +112,9 @@ int main() {
 
     printf("Missing keyes check: ");
     for (i = 0; i < elements; i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&A, key) != SET_TRUE) {
-            printf("Missing Key: [%s]\n", key);
+            printf("Missing Key: [%d]\n", key.label);
             inaccuraces++;
         }
     }
@@ -124,9 +126,10 @@ int main() {
     for (i = elements; i < elements * 2; i++) {
         item key = make_key(i);
         if (set_contains(&A, key) == SET_TRUE) {
-            printf("Non-present key: [%s]\n", key);
+            printf("Non-present key: [%d]\n", key.label);
             inaccuraces++;
         }
+        free_key(key);
     }
     success_or_failure(inaccuraces == 0);
 
@@ -135,36 +138,30 @@ int main() {
 
     printf("Remove keys didn't throw error: ");
     for (i = elements / 2; i < elements; i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_remove(&A, key) != SET_TRUE) {
             inaccuraces++;
         }
+        free_key(key);
     }
     success_or_failure(inaccuraces == 0 && A.used_nodes == elements / 2);
 
     printf("Remove keys check: ");
     inaccuraces = 0;
     for (i = 0; i < elements; i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (i >= elements / 2) {
             if (set_contains(&A, key) == SET_TRUE) {
-                printf("Additional Key: [%s]\n", key);
+                printf("Additional Key: [%d]\n", key.label);
                 inaccuraces++;
             }
         } else {
             if (set_contains(&A, key) != SET_TRUE) {
-                printf("Missing Key: [%s]\n", key);
+                printf("Missing Key: [%d]\n", key.label);
                 inaccuraces++;
             }
         }
+        free_key(key);
     }
     success_or_failure(inaccuraces == 0);
 
@@ -271,41 +268,32 @@ int main() {
 
     inaccuraces = 0;
     for (i = 0; i < elements / 2;  i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) == SET_TRUE) {
             printf("Non-present key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     for (i = elements + 1; i < elements * 2;  i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) == SET_TRUE) {
             printf("Non-present key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     printf("Non-present keys check: ");
     success_or_failure(inaccuraces == 0);
 
     inaccuraces = 0;
     for (i = elements / 2; i < elements; i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) != SET_TRUE) {
             printf("Missing Key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     printf("Missing keys check: ");
     success_or_failure(inaccuraces == 0);
@@ -321,30 +309,24 @@ int main() {
 
     inaccuraces = 0;
     for (i = 0; i < elements / 2; i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) != SET_TRUE) {
             printf("Missing Key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     printf("Missing keys check: ");
     success_or_failure(inaccuraces == 0);
 
     inaccuraces = 0;
     for (i = elements + 1; i < elements * 2;  i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) == SET_TRUE) {
             printf("Non-present key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     printf("Non-present keys check: ");
     success_or_failure(inaccuraces == 0);
@@ -361,41 +343,32 @@ int main() {
     printf("Completed the set_symmetric_difference\n");
     inaccuraces = 0;
     for (i = 0; i < elements / 2; i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) != SET_TRUE) {
             printf("Missing Key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     for (i = elements; i < elements * 2; i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) != SET_TRUE) {
             printf("Missing Key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     printf("Missing keys check: ");
     success_or_failure(inaccuraces == 0);
 
     inaccuraces = 0;
     for (i = elements / 2 + 1; i < elements;  i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) == SET_TRUE) {
             printf("Non-present key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     printf("Non-present keys check: ");
     success_or_failure(inaccuraces == 0);
@@ -410,15 +383,12 @@ int main() {
     assert(C.used_nodes == elements * 2);
 
     for (i = elements; i < elements * 2; i++) {
-        item key;
-        key.n_dims = 1;
-        key.index = malloc(sizeof(uint16_t));
-        key.index[0] = i;
-        key.label = i;
+        item key = make_key(i);
         if (set_contains(&C, key) != SET_TRUE) {
             printf("Missing Key: [%s]\n", key);
             inaccuraces++;
         }
+        free_key(key);
     }
     printf("Missing keys check: ");
     success_or_failure(inaccuraces == 0);
