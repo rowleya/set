@@ -4,7 +4,7 @@
 *.obj
 *.elf
 
-dist/*
+dist/s
 
 # Precompiled Headers
 *.gch
@@ -32,3 +32,7 @@ dist/*
 
 # Debug files
 *.dSYM/
+
+# Other files
+/.project
+/.settings/

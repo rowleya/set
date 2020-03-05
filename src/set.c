@@ -18,12 +18,15 @@
 #define MAX_FULLNESS_PERCENT 0.25       /* arbitrary */
 
 /* PRIVATE FUNCTIONS */
-static uint64_t __default_hash(char *key);
-static int __get_index(SimpleSet *set, char *key, uint64_t hash, uint64_t *index);
-static int __assign_node(SimpleSet *set, char *key, uint64_t hash, uint64_t index);
+static void __free(item *key);
+static void __copy(item *key, item *copy);
+static int __equals(item key1, item key2);
+static uint64_t __default_hash(item key);
+static int __get_index(SimpleSet *set, item key, uint64_t hash, uint64_t *index);
+static int __assign_node(SimpleSet *set, item key, uint64_t hash, uint64_t index);
 static void __free_index(SimpleSet *set, uint64_t index);
-static int __set_contains(SimpleSet *set, char *key, uint64_t hash);
-static int __set_add(SimpleSet *set, char *key, uint64_t hash);
+static int __set_contains(SimpleSet *set, item key, uint64_t hash);
+static int __set_add(SimpleSet *set, item key, uint64_t hash);
 static void __relayout_nodes(SimpleSet *set, uint64_t start, short end_on_null);
 static void __set_clear(SimpleSet *set);
 
@@ -64,17 +67,17 @@ int set_destroy(SimpleSet *set) {
     return SET_TRUE;
 }
 
-int set_add(SimpleSet *set, char *key) {
+int set_add(SimpleSet *set, item key) {
     uint64_t hash = set->hash_function(key);
     return __set_add(set, key, hash);
 }
 
-int set_contains(SimpleSet *set, char *key) {
+int set_contains(SimpleSet *set, item key) {
     uint64_t index, hash = set->hash_function(key);
     return __get_index(set, key, hash, &index);
 }
 
-int set_remove(SimpleSet *set, char *key) {
+int set_remove(SimpleSet *set, item key) {
     uint64_t index, hash = set->hash_function(key);
     int pos = __get_index(set, key, hash, &index);
     if (pos != SET_TRUE) {
@@ -92,16 +95,15 @@ uint64_t set_length(SimpleSet *set) {
     return set->used_nodes;
 }
 
-char** set_to_array(SimpleSet *set, uint64_t *size) {
+item* set_to_array(SimpleSet *set, uint64_t *size) {
     *size = set->used_nodes;
-    char** results = malloc(set->used_nodes * sizeof(char*));
+    item* results = malloc(set->used_nodes * sizeof(item));
     uint64_t i, j = 0;
     size_t len;
     for (i = 0; i < set->number_nodes; i++) {
         if (set->nodes[i] != NULL) {
-            len = strlen(set->nodes[i]->_key);
-            results[j] = calloc(len + 1, sizeof(char));
-            memcpy(results[j], set->nodes[i]->_key, len);
+            item *key = &(set->nodes[i]->_key);
+            __copy(key, &results[j]);
             j++;
         }
     }
@@ -233,26 +235,46 @@ int set_cmp(SimpleSet *left, SimpleSet *right) {
 /*******************************************************************************
 ***        PRIVATE FUNCTIONS
 *******************************************************************************/
-static uint64_t __default_hash(char *key) {
+static void __copy(item *key, item *copy) {
+    int n_bytes = key->n_dims * sizeof(uint16_t);
+    copy->index = malloc(n_bytes);
+    copy->n_dims = key->n_dims;
+    copy->label = key->label;
+    memcpy(copy->index, key->index, n_bytes);
+}
+
+static void __free(item *key) {
+    free(key->index);
+}
+
+static int __equals(item key_1, item key_2) {
+    if (key_1.n_dims != key_2.n_dims) {
+        return 0;
+    }
+    for (int i = 0; i < key_1.n_dims; i++) {
+        if (key_1.index[i] != key_2.index[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static uint64_t __default_hash(item key) {
     // FNV-1a hash (http://www.isthe.com/chongo/tech/comp/fnv/)
-    size_t i, len = strlen(key);
-    char *p = calloc(len + 1, sizeof(char));
-    memcpy(p, key, len);
     uint64_t h = 14695981039346656073ULL; // FNV_OFFSET 64 bit
-    for (i = 0; i < len; i++){
-        h = h ^ (unsigned char) p[i];
+    for (int i = 0; i < key.n_dims; i++){
+        h = h ^ key.index[i];
         h = h * 1099511628211ULL; // FNV_PRIME 64 bit
     }
-    free(p);
     return h;
 }
 
-static int __set_contains(SimpleSet *set, char *key, uint64_t hash) {
+static int __set_contains(SimpleSet *set, item key, uint64_t hash) {
     uint64_t index;
     return __get_index(set, key, hash, &index);
 }
 
-static int __set_add(SimpleSet *set, char *key, uint64_t hash) {
+static int __set_add(SimpleSet *set, item key, uint64_t hash) {
     uint64_t index;
     if (__set_contains(set, key, hash) == SET_TRUE) {
         return SET_ALREADY_PRESENT;
@@ -284,16 +306,15 @@ static int __set_add(SimpleSet *set, char *key, uint64_t hash) {
     }
 }
 
-static int __get_index(SimpleSet *set, char *key, uint64_t hash, uint64_t *index) {
+static int __get_index(SimpleSet *set, item key, uint64_t hash, uint64_t *index) {
     uint64_t i, idx;
     idx = hash % set->number_nodes;
     i = idx;
-    size_t len = strlen(key);
     while (1) {
         if (set->nodes[i] == NULL) {
             *index = i;
             return SET_FALSE; // not here OR first open slot
-        } else if (hash == set->nodes[i]->_hash && len == strlen(set->nodes[i]->_key) && strncmp(key, set->nodes[i]->_key, len) == 0) {
+        } else if (hash == set->nodes[i]->_hash && __equals(set->nodes[i]->_key, key)) {
             *index = i;
             return SET_TRUE;
         } else {
@@ -309,17 +330,15 @@ static int __get_index(SimpleSet *set, char *key, uint64_t hash, uint64_t *index
     }
 }
 
-static int __assign_node(SimpleSet *set, char *key, uint64_t hash, uint64_t index) {
-    size_t len = strlen(key);
+static int __assign_node(SimpleSet *set, item key, uint64_t hash, uint64_t index) {
     set->nodes[index] = malloc(sizeof(simple_set_node));
-    set->nodes[index]->_key = calloc(len + 1, sizeof(char));
-    memcpy(set->nodes[index]->_key, key, len);
+    __copy(&key, &(set->nodes[index]->_key));
     set->nodes[index]->_hash = hash;
     return SET_TRUE;
 }
 
 static void __free_index(SimpleSet *set, uint64_t index) {
-    free(set->nodes[index]->_key);
+    __free(&(set->nodes[index]->_key));
     free(set->nodes[index]);
     set->nodes[index] = NULL;
 }

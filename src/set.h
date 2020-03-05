@@ -17,10 +17,16 @@
 
 #include <inttypes.h>       /* uint64_t */
 
-typedef uint64_t (*set_hash_function) (char *key);
+typedef struct {
+    uint16_t n_dims;
+    uint16_t label;
+    uint16_t *index;
+} item;
+
+typedef uint64_t (*set_hash_function) (item key);
 
 typedef struct  {
-    char* _key;
+    item _key;
     uint64_t _hash;
 } SimpleSetNode, simple_set_node;
 
@@ -47,15 +53,15 @@ int set_destroy(SimpleSet *set);
 /*  Add element to set, returns SET_TRUE if added, SET_FALSE if already
     present, SET_ALREADY_PRESENT, or SET_CIRCULAR_ERROR if set is
     completely full */
-int set_add(SimpleSet *set, char *key);
+int set_add(SimpleSet *set, item key);
 
 /*  Remove element from the set; Returns SET_TRUE if removed, SET_FALSE if
     not present */
-int set_remove(SimpleSet *set, char *key);
+int set_remove(SimpleSet *set, item key);
 
 /*  Check if key in hash; Returns SET_TRUE if present, SET_FALSE if not
     found, or SET_CIRCULAR_ERROR if set is full and not found */
-int set_contains(SimpleSet *set, char *key);
+int set_contains(SimpleSet *set, item key);
 
 /* Return the number of elements in the set */
 uint64_t set_length(SimpleSet *set);
@@ -130,7 +136,7 @@ int set_is_superset_strict(SimpleSet *test, SimpleSet *against);
 
 /*  Return an array of the elements in the set
     NOTE: Up to the caller to free the memory */
-char** set_to_array(SimpleSet *set, uint64_t *size);
+item* set_to_array(SimpleSet *set, uint64_t *size);
 
 /*  Returns based on number elements:
     -1 if left is less than right
