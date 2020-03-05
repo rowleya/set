@@ -32,10 +32,11 @@ void check_string(SimpleSet *set, item key) {
 
 item make_key(int i) {
     item key;
-    key.n_dims = 2;
+    key.n_dims = 3;
     key.index = malloc(key.n_dims * sizeof(uint16_t));
-    key.index[0] = i % 32000;
-    key.index[1] = i / 32000;
+    key.index[0] = 0;
+    key.index[1] = i % 32000;
+    key.index[2] = i / 32000;
     key.label = i;
     return key;
 }
