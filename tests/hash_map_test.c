@@ -1,8 +1,9 @@
 
 #include "timing.h"
-#include "../src/set.h"
+#include "../src/hash_map.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -12,6 +13,12 @@
 #define KRED  "\x1B[31m"
 #define KGRN  "\x1B[32m"
 #define KCYN  "\x1B[36m"
+
+typedef struct {
+    uint16_t n_dims;
+    uint16_t label;
+    uint16_t *index;
+} item;
 
 
 void success_or_failure(int res) {
@@ -23,11 +30,53 @@ void success_or_failure(int res) {
 }
 
 void check_string(SimpleSet *set, item key) {
-    if (set_contains(set, key) == SET_TRUE) {
+    if (set_contains(set, &key) == SET_TRUE) {
         printf("Set contains [%d]!\n", key.label);
     } else {
         printf("Set does not contains [%d]!\n", key.label);
     }
+}
+
+static uint64_t item_hash(void *_key) {
+    item *key = _key;
+    // FNV-1a hash (http://www.isthe.com/chongo/tech/comp/fnv/)
+    uint64_t h = 14695981039346656073ULL; // FNV_OFFSET 64 bit
+    for (int i = 0; i < key->n_dims; i++){
+        h = h ^ key->index[i];
+        h = h * 1099511628211ULL; // FNV_PRIME 64 bit
+    }
+    return h;
+}
+
+static void *item_copy(void *_key) {
+    item *key = _key;
+    int n_bytes = key->n_dims * sizeof(uint16_t);
+    item *copy = malloc(sizeof(item));
+    copy->index = malloc(n_bytes);
+    copy->n_dims = key->n_dims;
+    copy->label = key->label;
+    memcpy(copy->index, key->index, n_bytes);
+    return copy;
+}
+
+static void item_free(void *_key) {
+    item *key = _key;
+    free(key->index);
+    free(key);
+}
+
+static int item_equals(void *_key_1, void *_key_2) {
+    item *key_1 = _key_1;
+    item *key_2 = _key_2;
+    if (key_1->n_dims != key_2->n_dims) {
+        return 0;
+    }
+    for (int i = 0; i < key_1->n_dims; i++) {
+        if (key_1->index[i] != key_2->index[i]) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 item make_key(int i) {
@@ -49,7 +98,7 @@ void initialize_set(SimpleSet *set, int start, int elements, int itter, int TEST
     int i;
     for (i = start; i < elements; i+=itter) {
         item key = make_key(i);
-        int res = set_add(set, key);
+        int res = set_add(set, &key);
         free_key(key);
         if (res != TEST) {
             printf("Error: %d\tres: %d\n", key.label, res);
@@ -69,25 +118,25 @@ int main() {
     SimpleSet A, B, C;
     /* Initialize Set A to 1/2 the elements in A */
     printf("==== Set A Initialization with %" PRIu64 " Elements ====\n", elements);
-    set_init(&A);
+    set_init(&A, item_hash, item_equals, item_copy, item_free);
     initialize_set(&A, 0, elements, 1, SET_TRUE);
     assert(A.used_nodes == elements);
 
-    item* keys = set_to_array(&A, &ui);
+    item** keys = set_to_array(&A, &ui);
     assert(A.used_nodes == ui);  // in multi-thread, don't want to assume it hasn't changed
     printf("==== Set A has %" PRIu64 " Keys ====\n", ui);
     for (i = 0; i < 15; i++) {
-        printf("%" PRIu64 "\t%d\n", i, keys[i].label);
+        printf("%" PRIu64 "\t%d\n", i, keys[i]->label);
     }
     // free the keys memory
     for (i = 0; i < ui; i++) {
-        free(keys[i].index);
+        free(keys[i]->index);
     }
     free(keys);
 
     /* Initialize Set B to 1/2 the elements in A */
     printf("==== Set B Initialization with %" PRIu64 " Elements ====\n", elements / 2);
-    set_init(&B);
+    set_init(&B, item_hash, item_equals, item_copy, item_free);
     initialize_set(&B, 0, elements / 2, 1, SET_TRUE);
     assert(B.used_nodes == elements / 2);
 
@@ -114,7 +163,7 @@ int main() {
     printf("Missing keyes check: ");
     for (i = 0; i < elements; i++) {
         item key = make_key(i);
-        if (set_contains(&A, key) != SET_TRUE) {
+        if (set_contains(&A, &key) != SET_TRUE) {
             printf("Missing Key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -126,7 +175,7 @@ int main() {
     inaccuraces = 0;
     for (i = elements; i < elements * 2; i++) {
         item key = make_key(i);
-        if (set_contains(&A, key) == SET_TRUE) {
+        if (set_contains(&A, &key) == SET_TRUE) {
             printf("Non-present key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -140,7 +189,7 @@ int main() {
     printf("Remove keys didn't throw error: ");
     for (i = elements / 2; i < elements; i++) {
         item key = make_key(i);
-        if (set_remove(&A, key) != SET_TRUE) {
+        if (set_remove(&A, &key) != SET_TRUE) {
             inaccuraces++;
         }
         free_key(key);
@@ -152,12 +201,12 @@ int main() {
     for (i = 0; i < elements; i++) {
         item key = make_key(i);
         if (i >= elements / 2) {
-            if (set_contains(&A, key) == SET_TRUE) {
+            if (set_contains(&A, &key) == SET_TRUE) {
                 printf("Additional Key: [%d]\n", key.label);
                 inaccuraces++;
             }
         } else {
-            if (set_contains(&A, key) != SET_TRUE) {
+            if (set_contains(&A, &key) != SET_TRUE) {
                 printf("Missing Key: [%d]\n", key.label);
                 inaccuraces++;
             }
@@ -254,9 +303,9 @@ int main() {
     printf("The intersection of a set A with a B is the set of elements that are in both set A and B. The intersection is denoted as A âˆ© B.\n");
     set_destroy(&A);
     set_destroy(&B);
-    set_init(&A);
-    set_init(&B);
-    set_init(&C);
+    set_init(&A, item_hash, item_equals, item_copy, item_free);
+    set_init(&B, item_hash, item_equals, item_copy, item_free);
+    set_init(&C, item_hash, item_equals, item_copy, item_free);
     assert(A.used_nodes == 0);
     assert(B.used_nodes == 0);
     assert(C.used_nodes == 0);
@@ -270,7 +319,7 @@ int main() {
     inaccuraces = 0;
     for (i = 0; i < elements / 2;  i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) == SET_TRUE) {
+        if (set_contains(&C, &key) == SET_TRUE) {
             printf("Non-present key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -278,7 +327,7 @@ int main() {
     }
     for (i = elements + 1; i < elements * 2;  i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) == SET_TRUE) {
+        if (set_contains(&C, &key) == SET_TRUE) {
             printf("Non-present key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -290,7 +339,7 @@ int main() {
     inaccuraces = 0;
     for (i = elements / 2; i < elements; i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) != SET_TRUE) {
+        if (set_contains(&C, &key) != SET_TRUE) {
             printf("Missing Key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -311,7 +360,7 @@ int main() {
     inaccuraces = 0;
     for (i = 0; i < elements / 2; i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) != SET_TRUE) {
+        if (set_contains(&C, &key) != SET_TRUE) {
             printf("Missing Key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -323,7 +372,7 @@ int main() {
     inaccuraces = 0;
     for (i = elements + 1; i < elements * 2;  i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) == SET_TRUE) {
+        if (set_contains(&C, &key) == SET_TRUE) {
             printf("Non-present key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -345,7 +394,7 @@ int main() {
     inaccuraces = 0;
     for (i = 0; i < elements / 2; i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) != SET_TRUE) {
+        if (set_contains(&C, &key) != SET_TRUE) {
             printf("Missing Key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -353,7 +402,7 @@ int main() {
     }
     for (i = elements; i < elements * 2; i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) != SET_TRUE) {
+        if (set_contains(&C, &key) != SET_TRUE) {
             printf("Missing Key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -365,7 +414,7 @@ int main() {
     inaccuraces = 0;
     for (i = elements / 2 + 1; i < elements;  i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) == SET_TRUE) {
+        if (set_contains(&C, &key) == SET_TRUE) {
             printf("Non-present key: [%d]\n", key.label);
             inaccuraces++;
         }
@@ -385,7 +434,7 @@ int main() {
 
     for (i = elements; i < elements * 2; i++) {
         item key = make_key(i);
-        if (set_contains(&C, key) != SET_TRUE) {
+        if (set_contains(&C, &key) != SET_TRUE) {
             printf("Missing Key: [%d]\n", key.label);
             inaccuraces++;
         }
