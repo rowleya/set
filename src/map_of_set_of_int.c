@@ -2,6 +2,29 @@
 #include <stdlib.h>
 #include <string.h>
 
+collection make_2d(uint16_t d1, uint16_t d2) {
+    collection c;
+    c.n_dims = 2;
+    c.index = malloc(2 * sizeof(uint16_t));
+    c.index[0] = d1;
+    c.index[1] = d2;
+    return c;
+}
+
+collection make_3d(uint16_t d1, uint16_t d2, uint16_t d3) {
+    collection c;
+    c.n_dims = 3;
+    c.index = malloc(3 * sizeof(uint16_t));
+    c.index[0] = d1;
+    c.index[1] = d2;
+    c.index[2] = d3;
+    return c;
+}
+
+void free_collection(collection c) {
+    free(c.index);
+}
+
 static uint64_t map_key_hash(void *_key) {
     map_key *key = _key;
     // FNV-1a hash (http://www.isthe.com/chongo/tech/comp/fnv/)
