@@ -99,7 +99,6 @@ item* set_to_array(SimpleSet *set, uint64_t *size) {
     *size = set->used_nodes;
     item* results = malloc(set->used_nodes * sizeof(item));
     uint64_t i, j = 0;
-    size_t len;
     for (i = 0; i < set->number_nodes; i++) {
         if (set->nodes[i] != NULL) {
             item *key = &(set->nodes[i]->_key);
