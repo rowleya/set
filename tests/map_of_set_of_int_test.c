@@ -57,4 +57,34 @@ int main() {
             }
         }
     }
+
+    SimpleSet *map3d = init_map();
+    for (int i = 0; i < 1000; i++) {
+        uint16_t x = rand() & 0xF;
+        uint16_t y = rand() & 0xF;
+        uint16_t z = rand() & 0xF;
+        collection key = make_3d(x, y, z);
+        uint32_t label = i % 10;
+        if (!add_item(map3d, key, label)) {
+            printf("Not adding %d, %d, %d = %d twice!\n", x, y, z, label);
+        }
+        free_collection(key);
+    }
+    for (int x = 0; x < 0xF; x++) {
+        for (int y = 0; y < 0xF; y++) {
+            for (int z = 0; z < 0xF; z++) {
+                collection key = make_3d(x, y, z);
+                if (get_labels(map3d, key, &labels, &n_labels)) {
+                    printf("Labels for (%d, %d, %d): [", x, y, z);
+                    for (uint64_t w = 0; w < n_labels; w++) {
+                        printf("%d", *labels[w]);
+                        if (w + 1 < n_labels) {
+                            printf(", ");
+                        }
+                    }
+                    printf("]\n");
+                }
+            }
+        }
+    }
 }
