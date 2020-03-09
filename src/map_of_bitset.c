@@ -20,6 +20,17 @@ collection make_3d(uint16_t d1, uint16_t d2, uint16_t d3) {
     return c;
 }
 
+void update_2d(collection c, uint16_t d1, uint16_t d2) {
+    c.index[0] = d1;
+    c.index[1] = d2;
+}
+
+void update_3d(collection c, uint16_t d1, uint16_t d2, uint16_t d3) {
+    c.index[0] = d1;
+    c.index[1] = d2;
+    c.index[2] = d3;
+}
+
 void free_collection(collection c) {
     free(c.index);
 }

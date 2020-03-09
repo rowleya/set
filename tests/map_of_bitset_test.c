@@ -2,35 +2,45 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/resource.h>
 
 int main() {
+    collection key = make_2d(0, 0);
+
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    long usage_start = usage.ru_maxrss;
     map_key_n_dims n_dims_2d = 2;
     SimpleSet *map2d = init_map(&n_dims_2d, 100);
+    getrusage(RUSAGE_SELF, &usage);
+    printf("Memory used by map = %ld\n", usage.ru_maxrss - usage_start);
+
     for (int i = 0; i < 100; i++) {
         uint16_t x = rand() & 0xF;
         uint16_t y = rand() & 0xF;
-        collection key = make_2d(x, y);
         uint32_t label = i % 32;
+        update_2d(key, x, y);
         if (!add_item(map2d, key, label)) {
             printf("Not adding %d, %d = %d twice!\n", x, y, label);
         }
-        free_collection(key);
     }
+    getrusage(RUSAGE_SELF, &usage);
+    printf("Memory used by %ld keys = %ld\n", set_length(map2d), usage.ru_maxrss - usage_start);
+    free_collection(key);
+    uint64_t n_keys;
+    collection **keys_2d = get_keys(map2d, &n_keys);
     uint32_t *labels;
     uint32_t n_labels;
-    for (int x = 0; x < 0xF; x++) {
-        for (int y = 0; y < 0xF; y++) {
-            collection key = make_2d(x, y);
-            if (get_labels(map2d, key, &labels, &n_labels)) {
-                printf("Labels for (%d, %d): [", x, y);
-                for (uint64_t z = 0; z < n_labels; z++) {
-                    printf("%d", labels[z]);
-                    if (z + 1 < n_labels) {
-                        printf(", ");
-                    }
+    for (uint64_t i = 0; i < n_keys; i++) {
+        if (get_labels(map2d, *(keys_2d[i]), &labels, &n_labels)) {
+            printf("Labels for (%d, %d): [", keys_2d[i]->index[0], keys_2d[i]->index[1]);
+            for (uint64_t z = 0; z < n_labels; z++) {
+                printf("%d", labels[z]);
+                if (z + 1 < n_labels) {
+                    printf(", ");
                 }
-                printf("]\n");
             }
+            printf("]\n");
         }
     }
 

@@ -20,6 +20,12 @@ collection make_2d(uint16_t d1, uint16_t d2);
 // Make a 3D key
 collection make_3d(uint16_t d1, uint16_t d2, uint16_t d3);
 
+// Update a 2D key
+void update_2d(collection c, uint16_t d1, uint16_t d2);
+
+// Update a 3D key
+void update_3d(collection c, uint16_t d1, uint16_t d2, uint16_t d3);
+
 // Free a previously made collection
 void free_collection(collection c);
 
