@@ -36,6 +36,7 @@ typedef struct  {
     void *global;
     uint64_t number_nodes;
     uint64_t used_nodes;
+    uint64_t n_collisions;
     key_hash_function hash_function;
     key_equals_function equals_function;
     key_copy_function copy_function;

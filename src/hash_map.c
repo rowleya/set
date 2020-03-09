@@ -43,6 +43,7 @@ int set_init(SimpleSet *set, void *global, uint64_t init_size,
         set->nodes[i] = NULL;
     }
     set->used_nodes = 0;
+    set->n_collisions = 0;
     set->global = global;
     set->hash_function = hash;
     set->equals_function = equals;
@@ -283,6 +284,10 @@ static int __set_add(SimpleSet *set, void *key, uint64_t hash, void *data) {
     if (res == SET_FALSE) { // this is the first open slot
         __assign_node(set, key, index, data);
         set->used_nodes++;
+        uint64_t expected_index = hash % set->number_nodes;
+        if (expected_index != index) {
+            set->n_collisions++;
+        }
         return SET_TRUE;
     } else {
         return res;
@@ -350,4 +355,5 @@ static void __set_clear(SimpleSet *set) {
         }
     }
     set->used_nodes = 0;
+    set->n_collisions = 0;
 }

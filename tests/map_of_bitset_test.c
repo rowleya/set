@@ -43,6 +43,7 @@ int main() {
             printf("]\n");
         }
     }
+    printf("%ld collisions\n", map2d->n_collisions);
 
     map_key_n_dims n_dims_3d = 3;
     SimpleSet *map3d = init_map(&n_dims_3d, 1000);
@@ -74,4 +75,5 @@ int main() {
             }
         }
     }
+    printf("%ld collisions\n", map3d->n_collisions);
 }
