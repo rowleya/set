@@ -15,10 +15,11 @@
 #define KCYN  "\x1B[36m"
 
 typedef struct {
-    uint16_t n_dims;
-    uint16_t label;
+    uint32_t label;
     uint16_t *index;
 } item;
+
+typedef uint16_t item_n_dims;
 
 
 void success_or_failure(int res) {
@@ -37,41 +38,43 @@ void check_string(SimpleSet *set, item key) {
     }
 }
 
-static uint64_t item_hash(void *_key) {
+static uint64_t item_hash(void *_key, void *_global) {
     item *key = _key;
+    item_n_dims *n_dims = _global;
+    uint32_t n_bytes = *n_dims * sizeof(key->index[0]);
+    uint8_t *bytes = (uint8_t *) key->index;
     // FNV-1a hash (http://www.isthe.com/chongo/tech/comp/fnv/)
     uint64_t h = 14695981039346656073ULL; // FNV_OFFSET 64 bit
-    for (int i = 0; i < key->n_dims; i++){
-        h = h ^ key->index[i];
+    for (uint32_t i = 0; i < n_bytes; i++){
+        h = h ^ bytes[i];
         h = h * 1099511628211ULL; // FNV_PRIME 64 bit
     }
     return h;
 }
 
-static void *item_copy(void *_key) {
+static void *item_copy(void *_key, void *_global) {
     item *key = _key;
-    int n_bytes = key->n_dims * sizeof(uint16_t);
+    item_n_dims *n_dims = _global;
+    int n_bytes = *n_dims * sizeof(uint16_t);
     item *copy = malloc(sizeof(item));
     copy->index = malloc(n_bytes);
-    copy->n_dims = key->n_dims;
     copy->label = key->label;
     memcpy(copy->index, key->index, n_bytes);
     return copy;
 }
 
-static void item_free(void *_key) {
+static void item_free(void *_key, void *_global) {
+    use(_global);
     item *key = _key;
     free(key->index);
     free(key);
 }
 
-static int item_equals(void *_key_1, void *_key_2) {
+static int item_equals(void *_key_1, void *_key_2, void *_global) {
     item *key_1 = _key_1;
     item *key_2 = _key_2;
-    if (key_1->n_dims != key_2->n_dims) {
-        return 0;
-    }
-    for (int i = 0; i < key_1->n_dims; i++) {
+    item_n_dims *n_dims = _global;
+    for (int i = 0; i < *n_dims; i++) {
         if (key_1->index[i] != key_2->index[i]) {
             return 0;
         }
@@ -81,8 +84,7 @@ static int item_equals(void *_key_1, void *_key_2) {
 
 item make_key(int i) {
     item key;
-    key.n_dims = 3;
-    key.index = malloc(key.n_dims * sizeof(uint16_t));
+    key.index = malloc(3 * sizeof(uint16_t));
     key.index[0] = 0;
     key.index[1] = i % 32000;
     key.index[2] = i / 32000;
@@ -116,9 +118,10 @@ int main() {
     uint64_t ui;
 
     SimpleSet A, B, C;
+    item_n_dims n_dims = 3;
     /* Initialize Set A to 1/2 the elements in A */
     printf("==== Set A Initialization with %" PRIu64 " Elements ====\n", elements);
-    set_init(&A, item_hash, item_equals, item_copy, item_free);
+    set_init(&A, &n_dims, 1024, item_hash, item_equals, item_copy, item_free);
     initialize_set(&A, 0, elements, 1, SET_TRUE);
     assert(A.used_nodes == elements);
 
@@ -136,7 +139,7 @@ int main() {
 
     /* Initialize Set B to 1/2 the elements in A */
     printf("==== Set B Initialization with %" PRIu64 " Elements ====\n", elements / 2);
-    set_init(&B, item_hash, item_equals, item_copy, item_free);
+    set_init(&B, &n_dims, 1024, item_hash, item_equals, item_copy, item_free);
     initialize_set(&B, 0, elements / 2, 1, SET_TRUE);
     assert(B.used_nodes == elements / 2);
 
@@ -303,9 +306,9 @@ int main() {
     printf("The intersection of a set A with a B is the set of elements that are in both set A and B. The intersection is denoted as A âˆ© B.\n");
     set_destroy(&A);
     set_destroy(&B);
-    set_init(&A, item_hash, item_equals, item_copy, item_free);
-    set_init(&B, item_hash, item_equals, item_copy, item_free);
-    set_init(&C, item_hash, item_equals, item_copy, item_free);
+    set_init(&A, &n_dims, 1024, item_hash, item_equals, item_copy, item_free);
+    set_init(&B, &n_dims, 1024, item_hash, item_equals, item_copy, item_free);
+    set_init(&C, &n_dims, 1024, item_hash, item_equals, item_copy, item_free);
     assert(A.used_nodes == 0);
     assert(B.used_nodes == 0);
     assert(C.used_nodes == 0);

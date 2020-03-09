@@ -4,8 +4,9 @@
 #include <stdio.h>
 
 int main() {
-    SimpleSet *map2d = init_map();
-    for (int i = 0; i < 100; i++) {
+    map_key_n_dims n_dims_2d = 2;
+    SimpleSet *map2d = init_map(&n_dims_2d, 100);
+    for (uint32_t i = 0; i < 100; i++) {
         uint16_t x = rand() & 0xF;
         uint16_t y = rand() & 0xF;
         collection key = make_2d(x, y);
@@ -15,26 +16,26 @@ int main() {
         }
         free_collection(key);
     }
+    uint64_t n_keys;
+    collection **keys = get_keys(map2d, &n_keys);
     uint32_t **labels;
     uint64_t n_labels;
-    for (int x = 0; x < 0xF; x++) {
-        for (int y = 0; y < 0xF; y++) {
-            collection key = make_2d(x, y);
-            if (get_labels(map2d, key, &labels, &n_labels)) {
-                printf("Labels for (%d, %d): [", x, y);
-                for (uint64_t z = 0; z < n_labels; z++) {
-                    printf("%d", *labels[z]);
-                    if (z + 1 < n_labels) {
-                        printf(", ");
-                    }
+    for (uint32_t i = 0; i < n_keys; i++) {
+        if (get_labels(map2d, *(keys[i]), &labels, &n_labels)) {
+            printf("Labels for (%d, %d): [", keys[i]->index[0], keys[i]->index[1]);
+            for (uint64_t j = 0; j < n_labels; j++) {
+                printf("%d", *labels[j]);
+                if (j + 1 < n_labels) {
+                    printf(", ");
                 }
-                printf("]\n");
             }
+            printf("]\n");
         }
     }
 
-    SimpleSet *map3d = init_map();
-    for (int i = 0; i < 1000; i++) {
+    map_key_n_dims n_dims_3d = 3;
+    SimpleSet *map3d = init_map(&n_dims_3d, 1000);
+    for (uint32_t i = 0; i < 1000; i++) {
         uint16_t x = rand() & 0xF;
         uint16_t y = rand() & 0xF;
         uint16_t z = rand() & 0xF;

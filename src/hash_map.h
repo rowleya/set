@@ -15,21 +15,25 @@
 #ifndef HASH_MAP_H__
 #define HASH_MAP_H__
 
+#ifndef use
+#define use(x)      do {} while ((x)!=(x))
+#endif
+
 #include <inttypes.h>       /* uint64_t */
 
-typedef uint64_t (*key_hash_function) (void *key);
-typedef int (*key_equals_function) (void *key_1, void *key_2);
-typedef void* (*key_copy_function) (void *key);
-typedef void (*key_free_function) (void *key);
+typedef uint64_t (*key_hash_function) (void *key, void *global);
+typedef int (*key_equals_function) (void *key_1, void *key_2, void *global);
+typedef void* (*key_copy_function) (void *key, void *global);
+typedef void (*key_free_function) (void *key, void *global);
 
 typedef struct  {
     void *_key;
-    uint64_t _hash;
     void *_data;
 } SimpleSetNode, simple_set_node;
 
 typedef struct  {
     simple_set_node **nodes;
+    void *global;
     uint64_t number_nodes;
     uint64_t used_nodes;
     key_hash_function hash_function;
@@ -38,8 +42,9 @@ typedef struct  {
     key_free_function free_function;
 } SimpleSet, simple_set;
 
-/* Initialize the set with a different hash function */
-int set_init(SimpleSet *set, key_hash_function hash, key_equals_function equals,
+/* Initialize the set */
+int set_init(SimpleSet *set, void *global, uint64_t init_size,
+        key_hash_function hash, key_equals_function equals,
         key_copy_function copy, key_free_function free);
 
 /* Utility function to clear out the set */

@@ -4,7 +4,8 @@
 #include <stdio.h>
 
 int main() {
-    SimpleSet *map2d = init_map();
+    map_key_n_dims n_dims_2d = 2;
+    SimpleSet *map2d = init_map(&n_dims_2d, 100);
     for (int i = 0; i < 100; i++) {
         uint16_t x = rand() & 0xF;
         uint16_t y = rand() & 0xF;
@@ -33,7 +34,8 @@ int main() {
         }
     }
 
-    SimpleSet *map3d = init_map();
+    map_key_n_dims n_dims_3d = 3;
+    SimpleSet *map3d = init_map(&n_dims_3d, 1000);
     for (int i = 0; i < 1000; i++) {
         uint16_t x = rand() & 0xF;
         uint16_t y = rand() & 0xF;

@@ -33,27 +33,35 @@ void check_string(SimpleSet *set, item key) {
     }
 }
 
-static uint64_t item_hash(void *_key) {
+static uint64_t item_hash(void *_key, void *_global) {
+    use(_global);
     item *key = _key;
+    uint32_t n_bytes = sizeof(item);
+    uint8_t *bytes = (uint8_t *) key;
     // FNV-1a hash (http://www.isthe.com/chongo/tech/comp/fnv/)
     uint64_t h = 14695981039346656073ULL; // FNV_OFFSET 64 bit
-    h = h ^ *key;
-    h = h * 1099511628211ULL; // FNV_PRIME 64 bit
+    for (uint32_t i = 0; i < n_bytes; i++) {
+        h = h ^ bytes[i];
+        h = h * 1099511628211ULL; // FNV_PRIME 64 bit
+    }
     return h;
 }
 
-static void *item_copy(void *_key) {
+static void *item_copy(void *_key, void *_global) {
+    use(_global);
     item *key = _key;
     item *copy = malloc(sizeof(item));
     *copy = *key;
     return copy;
 }
 
-static void item_free(void *key) {
+static void item_free(void *key, void *_global) {
+    use(_global);
     free(key);
 }
 
-static int item_equals(void *_key_1, void *_key_2) {
+static int item_equals(void *_key_1, void *_key_2, void *_global) {
+    use(_global);
     item *key_1 = _key_1;
     item *key_2 = _key_2;
     if (*key_1 != *key_2) {
@@ -67,6 +75,7 @@ item make_key(int i) {
 }
 
 void free_key(item key) {
+    use(key);
 }
 
 void initialize_set(SimpleSet *set, int start, int elements, int itter, int TEST) {
@@ -93,7 +102,7 @@ int main() {
     SimpleSet A, B, C;
     /* Initialize Set A to 1/2 the elements in A */
     printf("==== Set A Initialization with %" PRIu64 " Elements ====\n", elements);
-    set_init(&A, item_hash, item_equals, item_copy, item_free);
+    set_init(&A, NULL, 1024, item_hash, item_equals, item_copy, item_free);
     initialize_set(&A, 0, elements, 1, SET_TRUE);
     assert(A.used_nodes == elements);
 
@@ -111,7 +120,7 @@ int main() {
 
     /* Initialize Set B to 1/2 the elements in A */
     printf("==== Set B Initialization with %" PRIu64 " Elements ====\n", elements / 2);
-    set_init(&B, item_hash, item_equals, item_copy, item_free);
+    set_init(&B, NULL, 1024, item_hash, item_equals, item_copy, item_free);
     initialize_set(&B, 0, elements / 2, 1, SET_TRUE);
     assert(B.used_nodes == elements / 2);
 
@@ -278,9 +287,9 @@ int main() {
     printf("The intersection of a set A with a B is the set of elements that are in both set A and B. The intersection is denoted as A âˆ© B.\n");
     set_destroy(&A);
     set_destroy(&B);
-    set_init(&A, item_hash, item_equals, item_copy, item_free);
-    set_init(&B, item_hash, item_equals, item_copy, item_free);
-    set_init(&C, item_hash, item_equals, item_copy, item_free);
+    set_init(&A, NULL, 1024, item_hash, item_equals, item_copy, item_free);
+    set_init(&B, NULL, 1024, item_hash, item_equals, item_copy, item_free);
+    set_init(&C, NULL, 1024, item_hash, item_equals, item_copy, item_free);
     assert(A.used_nodes == 0);
     assert(B.used_nodes == 0);
     assert(C.used_nodes == 0);
